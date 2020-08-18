@@ -1,0 +1,247 @@
+# Rime schema
+# encoding: utf-8
+
+schema:
+  schema_id: luormaazih
+  name: Luormaazih
+  version: "0.2"
+  author:
+    - 抱豹 <baopaau@gmail.com>
+  description: |
+    普通花×羅馬字輸入方案：
+    借鑑了國語羅馬字的標調方式，
+    在漢語拼音的基礎上，通過少量變換規則，
+    完全消滅標調符號。
+    可以視爲國語羅馬字的簡化版。
+    適合作爲純字母鍵盤的帶調拼音輸入方案。
+    
+    基於地球拼音碼表（需要`terra_pinyin.dict.yaml`）
+    
+    標調規則：
+    在漢語拼音方案的基礎上，
+    `ü`換成`yu`，
+    陰平：一般在韻母前加上`r`，以濁音聲母`m|n|l|r`或`y|w`開頭則加上`h`，
+    　　　以`a|o|e`開頭則雙寫主元音，並在第一個元音後加上`h`，如`āo -> ahao`
+    陽平：在元音後加`r`，
+    上聲：主元音雙寫（漢語拼音的標調字母重複兩次，優先級；`a>e=o>i=u`），
+    去聲：一般在結尾加`h`，以`n|g`結尾，則分別換成`nn|q`，
+    輕聲：同漢語拼音原型，兒（輕聲）標`r`，不標`er`
+    
+    按V從漢語拼音反查。
+    
+  dependencies:
+    - terra_pinyin
+
+switches:
+  - name: ascii_mode
+    states: [ 中文, ASCII ]
+    reset: 0
+  - name: full_shape
+    states: [ 半形, 全形 ]
+  - options: [ noop, simplification, variants_hk, trad_tw, shin_jp ]
+    states: [ 原字, 陆简, 港繁, 臺正, 日新 ]
+    # 修改下行註釋，改變預設用字 [0, 1, 2, 3 --> 對應上表]
+    reset: 0
+  - name: ascii_punct
+    states: [ 。，, ．， ]
+  - name: emoji_suggestion
+    states: [ 無繪文字 , 帶繪文字 ]
+    # 註釋下行，預設禁用 emoji
+    reset: 1
+
+engine:
+  processors:
+    - ascii_composer
+    - recognizer
+    - key_binder
+    - speller
+    - punctuator
+    - selector
+    - navigator
+    - express_editor
+  segmentors:
+    - ascii_segmentor
+    - matcher
+    - abc_segmentor
+    - punct_segmentor
+    - fallback_segmentor
+  translators:
+    - punct_translator
+    - reverse_lookup_translator
+    - table_translator@custom_phrase
+    - script_translator
+  filters:
+    - simplifier
+    - simplifier@variants_hk
+    - simplifier@trad_tw
+    - simplifier@shin_jp
+    - simplifier@emoji_suggestion
+    #- reverse_lookup_filter
+    - uniquifier
+
+speller:
+  alphabet: zyxwvutsrqponmlkjihgfedcba
+  delimiter: " '"
+  algebra:
+    - erase/^xx$/
+    
+    - xform/\<([nl])v/$1yu/
+    
+    # 音別名
+    - derive/^([nl])yu/$1u/
+    - derive/^([jq])u/$1yu/
+    - derive/^([nljqxy])u/$1v/
+    
+    - derive/^yi?/i/
+    - derive/^wu?/u/
+    - derive/un/uen/
+    - derive/ui/uei/
+    - derive/iu/iou/
+    - derive/ao/au/
+    
+    # 國羅聲母混用
+    - derive/^zh([aeo])/j$1/
+    #- derive/^qi(\w+)/chi$1/
+    #- derive/^xi(\w+)/shi$1/
+    
+    # 鍵序容錯
+    - fuzz/ao/oa/
+    - fuzz/([aeiou])ng/$1gn/
+    - fuzz/([iu])a(o|ng?)/a$1$2/
+    
+    # 無調模糊音
+    - fuzz/([dtngkhrzcs])o(u|ng)/$1o/
+    - fuzz/ong/on/
+    - fuzz/^([zcs])h/$1/
+    - fuzz/ng$/n/
+    
+    # ※標調規則※
+    - xform/\<(m|n|r|l|y|w)(\w*)1\>/$1h$2/
+    - xform/\<(a|e|o)(\w*)1\>/$1h$1$2/
+    - xform/\<([zcs]h)(\w*)1\>/$1r$2/
+    - xform/\<(\w)(\w+)1\>/$1r$2/
+    # wha yhi aha ehe oho 
+    - xform/(a|e|i|o|u)(|ng?|r)2\>/$1r$2/
+    - fuzz/(a|e|o|i|u)(\w+)3\>/$1$1$2/ # 允許任意元音雙寫
+    - fuzz/(a|e|o|i|u)3\>/$1$1/ # ---
+    - xform/(a|e|o)(\w*)3\>/$1$1$2/
+    - xform/(i|u)(\w*)3\>/$1$1$2/
+    - xform/n4\>/nn/
+    - xform/g4\>/q/
+    - xform/4\>/h/
+    - xform/5\>//
+    
+    # 標調規則模糊
+    - fuzz/^([mnrlywaeo])h/$1r/
+    - fuzz/^([bpfdtgkhjqxzcs])r/$1h/
+    - fuzz/^([zcs]h)r/$1h/
+    - fuzz/q$/gh/
+    - fuzz/nn$/nh/
+    
+    # 國羅規則兼容
+    - derive/(\w{2,})oh$/$1w/
+    - derive/(\w{2,})ih$/$1y/
+    - derive/^(\w{0,2})uor/$1wo/
+    - derive/^(\w{0,2})uar/$1wa/
+    - derive/^(\w{0,2})aor/$1au/
+    - derive/^(\w{0,2})ur/$1wu/
+    - derive/^(\w{0,2})ir(\w+)$/$1y$2/
+    - derive/^(\w{0,2})i([aoeu]+)r(\w*)$/$1y$2$3/
+    - derive/^y([aou])\1/ye$1/
+    - derive/^(\w)aai/$1ae/
+    - derive/^(\w)iaa/$1ea/
+    - derive/^waa/woa/
+    - derive/^(\w{0,2})uaa/$1oa/
+    - derive/^(\w{0,2})uu(\w+)$/$1o$2/
+    
+    # 新唐拼音規則兼容
+    - derive/(a|e|i|o|u)r/$1l/
+    
+    # 無調拼音
+    - derive/^(\w)yu/$1v/
+    - derive/^(\w)yuu/$1vv/
+    - derive/^(\w)yuu/$1vu/
+    - derive/^([mnrlywaeo])h/$1/
+    - derive/^([bpfdtgkhjqxzcs])r/$1/
+    - derive/^([zcs]h)r/$1/
+    - derive/([aeiou])r/$1/
+    - derive/([aeiouv])\1/$1/
+    - derive/h$//
+    - derive/q$/g/
+    - derive/nn$/n/
+    
+    # 修正補靪
+    #- derive/iaa/ia/ # `biao`
+    #- derive/uaa/ua/ # `ruan`
+    #- derive/uoo/uo/ # `huo`
+    
+    # 簡拼
+    - abbrev/^([bpfdtgkhjqxzcs]r?).+$/$1/
+    - abbrev/^([mnrlywaeo]h?).+$/$1/
+    - abbrev/^([zcs]hr?).+$/$1/
+    
+translator:
+  dictionary: terra_pinyin
+  prism: luormaazih
+  spelling_hints: 5
+  strict_spelling: false
+  comment_format: &comment
+    - xform/\<([nl])v/$1yu/
+    - xform/\<(m|n|r|l|y|w)(\w*)1\>/$1h$2/
+    - xform/\<(a|e|o)(\w*)1\>/$1h$1$2/
+    - xform/\<([zcs]h)(\w*)1\>/$1r$2/
+    - xform/\<(\w)(\w+)1\>/$1r$2/
+    - xform/(a|e|i|o|u)(|ng?|r)2\>/$1r$2/
+    - xform/(a|e|o)(\w*)3\>/$1$1$2/
+    - xform/(i|u)(\w*)3\>/$1$1$2/
+    - xform/n4\>/nn/
+    - xform/g4\>/q/
+    - xform/4\>/h/
+    - xform/5\>//
+    #- "xform/ .*$//"
+    
+custom_phrase:
+  dictionary: ""
+  user_dict: custom_phrase
+  db_class: stabledb
+  enable_completion: false
+  enable_sentence: false
+  initial_quality: 1
+    
+reverse_lookup:
+  overwrite_comment: true
+  dictionary: terra_pinyin
+  prism: terra_pinyin
+  prefix: "v"
+  suffix: "'"
+  tips: 〔漢語拼音〕
+  comment_format: *comment
+  
+variants_hk:
+  option_name: variants_hk
+  opencc_config: t2hkf.json
+
+trad_tw:
+  option_name: trad_tw
+  opencc_config: t2tw.json
+  
+shin_jp:
+  option_name: shin_jp
+  opencc_config: t2jp.json
+
+emoji_suggestion:
+  opencc_config: emoji.json
+  option_name: emoji_suggestion
+  tips: all
+  
+punctuator:
+  import_preset: symbols
+
+key_binder:
+  import_preset: default
+
+recognizer:
+  import_preset: default
+  patterns:
+    punct: "^/([0-9]0?|[a-z]+)$"
+    reverse_lookup: "^v[a-z]*'?$|[a-z]+'$"
