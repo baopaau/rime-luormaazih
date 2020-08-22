@@ -4,26 +4,24 @@
 schema:
   schema_id: luormaazih
   name: Luormaazih
-  version: "0.3"
+  version: "0.4"
   author:
     - 抱豹 <baopaau@gmail.com>
   description: |
-    拼音羅馬字輸入方案
     異拼式聲調表示，可以視爲國語羅馬字的簡化版。
+    兼容無聲調漢語拼音輸入，
     適合作爲純字母鍵盤的帶調拼音輸入方案。
-    
-    基於地球拼音碼表，需要`terra_pinyin.dict.yaml`
     
     標調規則：
     在漢語拼音方案的基礎上，
     `ü`換成`yu`，
-    輕聲無調號，作原形
-    陰平：在元音後加`l`
+    陰平：同無聲調原型（輸入法：後加`”`排除其他候選），
     陽平：在元音後加`r`，
-    上聲：原標調字母（韻腹）雙寫，優先級：`a>e=o>i=u`，同優先級取尾部
-    去聲：在元音後加`h`，如出現`hn|hng`，則分別換成`nn|nq`，
+    上聲：原標調字母（韻腹）雙寫，優先級：`a>e=o>i=u`，同優先級取尾部，
+    去聲：在元音後加`h`，
+    輕聲：在最前面加`.`（輸入法：不打出）。
     
-    按V從漢語拼音反查。
+    基於地球拼音碼表，需要`terra_pinyin.dict.yaml`。
     
   dependencies:
     - terra_pinyin
@@ -72,14 +70,13 @@ engine:
     - simplifier@trad_tw
     - simplifier@shin_jp
     - simplifier@emoji_suggestion
-    #- reverse_lookup_filter
     - uniquifier
     
 grammar:
   language: "zh-hant-t-essay-bgw"
 
 speller:
-  alphabet: zyxwvutsrqponmlkjihgfedcba
+  alphabet: 'zyxwvutsrqponmlkjihgfedcba"'
   delimiter: " '"
   algebra:
     - erase/^xx$/
@@ -109,6 +106,9 @@ speller:
     - fuzz/([aeiou])ng/$1gn/
     - fuzz/([iu])a(o|ng?)/a$1$2/
     
+    # 陰平調指定
+    - 'derive/(\w+?)1\>/$1"/'
+    
     # 忽略聲調
     - derive/[1234]//
     
@@ -117,13 +117,11 @@ speller:
     - fuzz/([aeoiu])3\>/$1$1/
     
     # ※標調規則※
-    - xform/([aeoiur])(|ng?)1\>/$1l$2/
+    - xform/1\>//
     - xform/([aeoiur])(|ng?)2\>/$1r$2/
     - xform/([aeo])(\w*?)3\>/$1$1$2/
     - xform/([iu])(\w*?)3\>/$1$1$2/
     - xform/([aeoiur])(|ng?)4\>/$1h$2/
-    - xform/hn\>/nn/
-    - xform/hng\>/nq/
     - xform/5\>//
     
     # 標調規則模糊
@@ -153,14 +151,12 @@ translator:
   comment_format: &comment
     - xform/\<([nl])v/$1yu/
     - xform/\<r5\>/r/
-    - xform/([aeoiur])(|ng?)1\>/$1l$2/
+    - xform/1\>//
     - xform/([aeoiur])(|ng?)2\>/$1r$2/
     - xform/([aeo])(\w*?)3\>/$1$1$2/
     - xform/([iu])(\w*?)3\>/$1$1$2/
     - xform/([aeoiur])(|ng?)4\>/$1h$2/
-    - xform/hn\>/nn/
-    - xform/hng\>/nq/
-    - xform/5\>//
+    - xform/(\w+?)5\>/\.$1/
     
 custom_phrase:
   dictionary: ""
